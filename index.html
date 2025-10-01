@@ -47,6 +47,7 @@
             border-radius: 4px;
             cursor: pointer;
             font-size: 16px;
+            margin-right: 10px;
         }
         button:hover {
             background-color: #45a049;
@@ -72,6 +73,13 @@
             font-size: 24px;
             margin: 15px 0;
         }
+        .noun-result {
+            margin-top: 20px;
+            padding: 10px;
+            border-left: 4px solid #007BFF;
+            background-color: #f1f8ff;
+            display: none;
+        }
         .error {
             color: #d9534f;
             background-color: #fdf7f7;
@@ -91,31 +99,44 @@
             font-size: 14px;
             margin-top: 5px;
         }
+        .action-buttons {
+            margin-top: 15px;
+            display: none;
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>Product Review Sentiment Analysis</h1>
-        
+
         <div class="input-group">
             <label for="apiToken">Hugging Face API Token (optional):</label>
             <input type="text" id="apiToken" placeholder="Enter your Hugging Face API token">
             <p class="instructions">For higher rate limits. Not required for basic usage with the free tier.</p>
         </div>
         
-        <button id="analyzeBtn">Analyze Random Review</button>
+        <button id="selectReviewBtn">Select Random Review</button>
+        
+        <div class="action-buttons" id="actionButtons">
+            <button id="analyzeBtn">Analyze Sentiment</button>
+            <button id="countNounsBtn">Count Nouns</button>
+        </div>
         
         <div class="loading" id="loading">
-            <p>Analyzing sentiment...</p>
+            <p>Processing...</p>
         </div>
         
         <div id="result">
             <h3>Random Review:</h3>
             <div class="review-text" id="reviewText"></div>
             
-            <h3>Sentiment Analysis:</h3>
-            <div class="sentiment-result" id="sentimentIcon"></div>
-            <div id="sentimentDetails"></div>
+            <div id="sentimentSection" style="display:none;">
+                <h3>Sentiment Analysis:</h3>
+                <div class="sentiment-result" id="sentimentIcon"></div>
+                <div id="sentimentDetails"></div>
+            </div>
+
+            <div class="noun-result" id="nounResult"></div>
         </div>
         
         <div class="error" id="error"></div>
