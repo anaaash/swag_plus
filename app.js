@@ -24,7 +24,6 @@ document.addEventListener('DOMContentLoaded', function() {
     let currentReview = '';
 
     // --- Initialization ---
-    // Load and parse the TSV file on page load
     fetch('reviews_test.tsv')
         .then(response => {
             if (!response.ok) throw new Error(`Could not load reviews file: ${response.statusText}`);
@@ -104,10 +103,19 @@ document.addEventListener('DOMContentLoaded', function() {
 
         try {
             const data = await callApi(model, currentReview);
-            if (!data || !Array.isArray(data)) {
-                throw new Error('Invalid response format from POS Tagging API.');
+            
+            // ========================= FIX IS HERE =========================
+            // Some HF models wrap single responses in an extra array, like [[...]].
+            // We check for this common case and extract the inner array.
+            const posResults = Array.isArray(data) && Array.isArray(data[0]) ? data[0] : data;
+            
+            // Now we perform a final check to ensure we have a valid array to work with.
+            if (!Array.isArray(posResults)) {
+                throw new Error('Could not parse a valid array from the POS Tagging API response.');
             }
-            displayNounCount(data);
+            // ===============================================================
+            
+            displayNounCount(posResults);
         } catch (error) {
             showError(error.message);
         } finally {
@@ -151,15 +159,16 @@ document.addEventListener('DOMContentLoaded', function() {
         sentimentDetailsElement.innerHTML = `<strong>${sentiment}</strong> with ${(result.score * 100).toFixed(1)}% confidence.`;
         
         sentimentResultArea.style.display = 'block';
-        nounResultArea.style.display = 'none'; // Hide other result
+        nounResultArea.style.display = 'none';
     }
 
     function displayNounCount(posResults) {
+        // This function now correctly receives the inner array of token objects
         const nouns = posResults.filter(token => token.entity_group === 'NOUN');
         nounCountDetailsElement.textContent = `Found ${nouns.length} noun(s) in the review.`;
         
         nounResultArea.style.display = 'block';
-        sentimentResultArea.style.display = 'none'; // Hide other result
+        sentimentResultArea.style.display = 'none';
     }
 
     function setLoadingState(isLoading) {
