@@ -3,140 +3,159 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sentiment Analysis App</title>
+    <title>Review Analyzer</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
     <style>
         body {
-            font-family: Arial, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             max-width: 800px;
-            margin: 0 auto;
+            margin: 2rem auto;
             padding: 20px;
-            background-color: #f5f5f5;
+            background-color: #f7f9fc;
+            color: #333;
         }
         h1 {
-            color: #333;
+            color: #1a202c;
             text-align: center;
         }
         .container {
             background-color: white;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
         }
         .input-group {
-            margin-bottom: 15px;
+            margin-bottom: 20px;
         }
         label {
             display: block;
-            margin-bottom: 5px;
-            font-weight: bold;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #4a5568;
         }
         input[type="text"] {
             width: 100%;
-            padding: 8px;
+            padding: 10px;
             border: 1px solid #ddd;
-            border-radius: 4px;
+            border-radius: 8px;
             box-sizing: border-box;
+            transition: border-color 0.2s;
+        }
+        input[type="text"]:focus {
+            outline: none;
+            border-color: #4299e1;
+            box-shadow: 0 0 0 2px rgba(66, 153, 225, 0.5);
         }
         button {
-            background-color: #4CAF50;
+            background-color: #4299e1;
             color: white;
-            padding: 10px 15px;
+            padding: 10px 18px;
             border: none;
-            border-radius: 4px;
+            border-radius: 8px;
             cursor: pointer;
             font-size: 16px;
+            font-weight: 600;
             margin-right: 10px;
+            transition: background-color 0.2s;
         }
         button:hover {
-            background-color: #45a049;
+            background-color: #2b6cb0;
         }
         button:disabled {
             background-color: #cccccc;
             cursor: not-allowed;
-        }
-        #result {
-            margin-top: 20px;
-            padding: 15px;
-            border-radius: 4px;
-            display: none;
+            opacity: 0.7;
         }
         .review-text {
-            background-color: #f9f9f9;
+            background-color: #f7fafc;
             padding: 15px;
-            border-left: 4px solid #ddd;
-            margin-bottom: 15px;
+            border-left: 4px solid #e2e8f0;
+            margin: 20px 0;
+            border-radius: 4px;
         }
-        .sentiment-result {
-            text-align: center;
-            font-size: 24px;
-            margin: 15px 0;
-        }
-        .noun-result {
+        .result-area {
             margin-top: 20px;
-            padding: 10px;
-            border-left: 4px solid #007BFF;
-            background-color: #f1f8ff;
+            padding: 15px;
+            border-top: 1px solid #e2e8f0;
             display: none;
         }
+        .sentiment-result {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            font-size: 18px;
+        }
+        .sentiment-result i {
+            font-size: 28px;
+        }
+        .noun-result {
+            font-size: 18px;
+            font-weight: 600;
+            color: #2b6cb0;
+        }
         .error {
-            color: #d9534f;
-            background-color: #fdf7f7;
-            border: 1px solid #d9534f;
-            padding: 10px;
-            border-radius: 4px;
-            margin-top: 15px;
+            color: #c53030;
+            background-color: #fff5f5;
+            border: 1px solid #c53030;
+            padding: 12px;
+            border-radius: 8px;
+            margin-top: 20px;
             display: none;
         }
         .loading {
             text-align: center;
-            margin: 20px 0;
+            margin: 25px 0;
             display: none;
+            font-weight: 500;
+            color: #718096;
         }
         .instructions {
-            color: #666;
+            color: #718096;
             font-size: 14px;
-            margin-top: 5px;
+            margin-top: 8px;
         }
         .action-buttons {
-            margin-top: 15px;
+            margin-top: 20px;
             display: none;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>Product Review Sentiment Analysis</h1>
+        <h1>Review Analyzer</h1>
 
         <div class="input-group">
-            <label for="apiToken">Hugging Face API Token (optional):</label>
-            <input type="text" id="apiToken" placeholder="Enter your Hugging Face API token">
-            <p class="instructions">For higher rate limits. Not required for basic usage with the free tier.</p>
+            <label for="apiToken">Hugging Face API Token (optional but recommended):</label>
+            <input type="text" id="apiToken" placeholder="Paste your hf_... token here">
+            <p class="instructions">Resolves authorization errors and provides higher rate limits.</p>
         </div>
         
-        <button id="selectReviewBtn">Select Random Review</button>
+        <button id="selectReviewBtn" disabled>Loading Reviews...</button>
         
-        <div class="action-buttons" id="actionButtons">
-            <button id="analyzeBtn">Analyze Sentiment</button>
-            <button id="countNounsBtn">Count Nouns</button>
+        <div id="reviewDisplay" style="display:none;">
+            <div class="review-text" id="reviewText"></div>
+            <div class="action-buttons" id="actionButtons">
+                <button id="analyzeBtn">Analyze Sentiment</button>
+                <button id="countNounsBtn">Count Nouns</button>
+            </div>
         </div>
         
         <div class="loading" id="loading">
-            <p>Processing...</p>
+            <p>Communicating with AI model...</p>
         </div>
         
-        <div id="result">
-            <h3>Random Review:</h3>
-            <div class="review-text" id="reviewText"></div>
-            
-            <div id="sentimentSection" style="display:none;">
-                <h3>Sentiment Analysis:</h3>
-                <div class="sentiment-result" id="sentimentIcon"></div>
-                <div id="sentimentDetails"></div>
+        <div class="result-area" id="sentimentResultArea">
+            <h3>Sentiment Analysis:</h3>
+            <div class="sentiment-result">
+                <span id="sentimentIcon"></span>
+                <span id="sentimentDetails"></span>
             </div>
+        </div>
 
-            <div class="noun-result" id="nounResult"></div>
+        <div class="result-area" id="nounResultArea">
+            <h3>Noun Count:</h3>
+            <p class="noun-result" id="nounCountDetails"></p>
         </div>
         
         <div class="error" id="error"></div>
