@@ -137,7 +137,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (!data || !Array.isArray(data) || data.length === 0) {
                     throw new Error('Invalid POS tagging response from API');
                 }
-                displayNounCount(data[0]);
+                displayNounCount(data);
             }
         })
         .catch(error => {
