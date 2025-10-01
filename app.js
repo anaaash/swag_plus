@@ -103,17 +103,26 @@ document.addEventListener('DOMContentLoaded', function() {
 
         try {
             const data = await callApi(model, currentReview);
-            
-            // ========================= FIX IS HERE =========================
-            // Some HF models wrap single responses in an extra array, like [[...]].
-            // We check for this common case and extract the inner array.
-            const posResults = Array.isArray(data) && Array.isArray(data[0]) ? data[0] : data;
-            
-            // Now we perform a final check to ensure we have a valid array to work with.
-            if (!Array.isArray(posResults)) {
-                throw new Error('Could not parse a valid array from the POS Tagging API response.');
+
+            // ========================= THE BULLETPROOF FIX =========================
+            // 1. Check if the response is a valid array. If not, it's an error.
+            if (!Array.isArray(data)) {
+                // Try to find a specific error message inside the object response.
+                if (data && data.error) {
+                    throw new Error(`API returned an error: ${data.error}`);
+                }
+                // If the model is just loading, provide a helpful message.
+                if (data && data.estimated_time) {
+                    throw new Error('Model is loading, please wait a moment and try again.');
+                }
+                // For any other non-array response, throw a generic error.
+                throw new Error('POS Tagging API did not return an array of results.');
             }
-            // ===============================================================
+            
+            // 2. Now that we know `data` is an array, we handle the nested case.
+            // This is safe because `data` is guaranteed to be an array here.
+            const posResults = Array.isArray(data[0]) ? data[0] : data;
+            // =======================================================================
             
             displayNounCount(posResults);
         } catch (error) {
@@ -163,7 +172,6 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function displayNounCount(posResults) {
-        // This function now correctly receives the inner array of token objects
         const nouns = posResults.filter(token => token.entity_group === 'NOUN');
         nounCountDetailsElement.textContent = `Found ${nouns.length} noun(s) in the review.`;
         
