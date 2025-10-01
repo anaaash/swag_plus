@@ -1,5 +1,7 @@
 document.addEventListener('DOMContentLoaded', function() {
+    const selectReviewBtn = document.getElementById('selectReviewBtn');
     const analyzeBtn = document.getElementById('analyzeBtn');
+    const countNounsBtn = document.getElementById('countNounsBtn');
     const apiTokenInput = document.getElementById('apiToken');
     const reviewTextElement = document.getElementById('reviewText');
     const sentimentIconElement = document.getElementById('sentimentIcon');
@@ -7,9 +9,13 @@ document.addEventListener('DOMContentLoaded', function() {
     const resultElement = document.getElementById('result');
     const errorElement = document.getElementById('error');
     const loadingElement = document.getElementById('loading');
-    
+    const actionButtons = document.getElementById('actionButtons');
+    const nounResultElement = document.getElementById('nounResult');
+    const sentimentSection = document.getElementById('sentimentSection');
+
     let reviews = [];
-    
+    let currentReview = "";
+
     // Load and parse the TSV file
     fetch('reviews_test.tsv')
         .then(response => response.text())
@@ -34,32 +40,56 @@ document.addEventListener('DOMContentLoaded', function() {
                 return;
             }
             
-            analyzeBtn.disabled = false;
+            selectReviewBtn.disabled = false;
         })
         .catch(error => {
             showError('Error loading TSV file: ' + error.message);
         });
-    
-    analyzeBtn.addEventListener('click', function() {
+
+    // Select random review
+    selectReviewBtn.addEventListener('click', function() {
         if (reviews.length === 0) {
             showError('No reviews available for analysis');
             return;
         }
         
-        // Reset UI
         hideError();
-        resultElement.style.display = 'none';
-        loadingElement.style.display = 'block';
-        analyzeBtn.disabled = true;
-        
-        // Select a random review
+        sentimentSection.style.display = 'none';
+        nounResultElement.style.display = 'none';
+        resultElement.style.display = 'block';
+
         const randomIndex = Math.floor(Math.random() * reviews.length);
-        const randomReview = reviews[randomIndex];
+        currentReview = reviews[randomIndex];
+        reviewTextElement.textContent = currentReview;
+
+        actionButtons.style.display = 'block';
+    });
+
+    // Analyze sentiment
+    analyzeBtn.addEventListener('click', function() {
+        if (!currentReview) {
+            showError('No review selected');
+            return;
+        }
         
-        // Display the review
-        reviewTextElement.textContent = randomReview;
+        processRequest('sentiment');
+    });
+
+    // Count nouns
+    countNounsBtn.addEventListener('click', function() {
+        if (!currentReview) {
+            showError('No review selected');
+            return;
+        }
         
-        // Prepare API request
+        processRequest('nouns');
+    });
+
+    function processRequest(type) {
+        hideError();
+        loadingElement.style.display = 'block';
+        disableAllButtons(true);
+
         const apiToken = apiTokenInput.value.trim();
         const headers = {
             'Content-Type': 'application/json',
@@ -68,12 +98,18 @@ document.addEventListener('DOMContentLoaded', function() {
         if (apiToken) {
             headers['Authorization'] = `Bearer ${apiToken}`;
         }
-        
-        // Call Hugging Face API
-        fetch('https://api-inference.huggingface.co/models/siebert/sentiment-roberta-large-english', {
+
+        let url;
+        if (type === 'sentiment') {
+            url = 'https://api-inference.huggingface.co/models/siebert/sentiment-roberta-large-english';
+        } else if (type === 'nouns') {
+            url = 'https://api-inference.huggingface.co/models/vblagoje/bert-english-uncased-finetuned-pos';
+        }
+
+        fetch(url, {
             method: 'POST',
             headers: headers,
-            body: JSON.stringify({ inputs: randomReview })
+            body: JSON.stringify({ inputs: currentReview })
         })
         .then(response => {
             if (!response.ok) {
@@ -89,22 +125,28 @@ document.addEventListener('DOMContentLoaded', function() {
         })
         .then(data => {
             loadingElement.style.display = 'none';
-            analyzeBtn.disabled = false;
-            
-            if (!data || !Array.isArray(data) || data.length === 0) {
-                throw new Error('Invalid response from API');
+            disableAllButtons(false);
+
+            if (type === 'sentiment') {
+                if (!data || !Array.isArray(data) || data.length === 0) {
+                    throw new Error('Invalid sentiment response from API');
+                }
+                const result = data[0][0];
+                displaySentiment(result);
+            } else if (type === 'nouns') {
+                if (!data || !Array.isArray(data) || data.length === 0) {
+                    throw new Error('Invalid POS tagging response from API');
+                }
+                displayNounCount(data[0]);
             }
-            
-            const result = data[0][0];
-            displaySentiment(result);
         })
         .catch(error => {
             loadingElement.style.display = 'none';
-            analyzeBtn.disabled = false;
+            disableAllButtons(false);
             showError(error.message);
         });
-    });
-    
+    }
+
     function displaySentiment(result) {
         let sentiment, iconClass, color;
         
@@ -129,14 +171,26 @@ document.addEventListener('DOMContentLoaded', function() {
             <p>Confidence: ${(result.score * 100).toFixed(2)}%</p>
         `;
         
-        resultElement.style.display = 'block';
+        sentimentSection.style.display = 'block';
     }
-    
+
+    function displayNounCount(posResults) {
+        const nouns = posResults.filter(token => token.entity_group === 'NOUN');
+        nounResultElement.textContent = `Noun Count: ${nouns.length}`;
+        nounResultElement.style.display = 'block';
+    }
+
+    function disableAllButtons(disable) {
+        selectReviewBtn.disabled = disable;
+        analyzeBtn.disabled = disable;
+        countNounsBtn.disabled = disable;
+    }
+
     function showError(message) {
         errorElement.textContent = message;
         errorElement.style.display = 'block';
     }
-    
+
     function hideError() {
         errorElement.style.display = 'none';
         errorElement.textContent = '';
